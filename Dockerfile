@@ -1,8 +1,8 @@
 FROM php:8.2-fpm-alpine
 
-# Instalar extensiones de PHP necesarias para Laravel y herramientas
-RUN apk add --no-cache nginx wget bash nodejs npm \
-    && docker-php-ext-install pdo pdo_mysql
+# Instalar extensiones de PHP necesarias para Laravel (MySQL y PostgreSQL) y herramientas de Frontend
+RUN apk add --no-cache nginx wget bash nodejs npm postgresql-dev \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql
 
 # Configurar directorio de trabajo
 WORKDIR /var/www/html
