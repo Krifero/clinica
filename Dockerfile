@@ -48,4 +48,4 @@ RUN echo 'server { \
 EXPOSE 80
 
 # Arrancar el contenedor: ejecuta migraciones y enciende servidores
-CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
+CMD php artisan migrate --force; php artisan db:seed --force; php-fpm -D && nginx -g "daemon off;"
