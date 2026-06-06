@@ -12,23 +12,21 @@ COPY . .
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
 
-# --- COMPILAR FRONTEND (Vite / Mix) ---
-# Si existe el archivo package.json, instala las herramientas de diseño y compila los estilos
+# Compilar Frontend (Vite / Mix)
 RUN if [ -f package.json ]; then npm install && npm run build; fi
 
 # Configurar permisos para Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configurar Nginx corregido con soporte de rutas para Laravel
+# Configurar Nginx reescribiendo de forma estricta para Laravel
 RUN echo 'server { \
     listen 80; \
     root /var/www/html/public; \
     index index.php index.html; \
     location / { \
-        try_files $uri $uri/ /index.php?$query_string; \
+        try_files $uri $uri/ /index.php?$args; \
     } \
     location ~ \.php$ { \
-        try_files $uri =404; \
         include fastcgi_params; \
         fastcgi_pass 127.0.0.1:9000; \
         fastcgi_index index.php; \
