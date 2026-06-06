@@ -1,22 +1,31 @@
+# --- ETAPA 1: INSTALAR COMPOSER Y CONSTRUIR DEPENDENCIAS ---
+FROM composer:2.7 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --ignore-platform-reqs --no-scripts --no-autoloader
+
+# --- ETAPA 2: CONFIGURACIÓN FINAL DEL SERVIDOR DEBIAN ---
 FROM php:8.2-fpm
 
-# Instalar Nginx, Node.js, NPM y las librerías oficiales de PostgreSQL
+# Instalar dependencias del sistema indispensables
 RUN apt-get update && apt-get install -y \
     nginx \
-    wget \
     bash \
     nodejs \
     npm \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_mysql pdo_pgsql
+    && docker-php-ext-install pdo pdo_pgsql pdo_mysql
 
-# Configurar directorio de trabajo
+# Directorio de trabajo
 WORKDIR /var/www/html
 COPY . .
 
-# Instalar dependencias de PHP con Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-RUN composer install --no-dev --optimize-autoloader
+# Copiar las dependencias de Composer desde la Etapa 1
+COPY --from=vendor /app/vendor/ /var/www/html/vendor/
+
+# Generar el autoloader optimizado de Laravel
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && composer dump-autoload --optimize --no-dev
 
 # Compilar Frontend (Vite / Mix)
 RUN if [ -f package.json ]; then npm install && npm run build; fi
@@ -41,6 +50,6 @@ RUN echo 'server { \
 }' > /etc/nginx/sites-available/default \
 && ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-# Exponer el puerto y arrancar Nginx junto con PHP ejecutando las migraciones automáticas
+# Exponer puerto y arrancar servicios con migraciones automáticas
 EXPOSE 80
 CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
