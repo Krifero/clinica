@@ -34,4 +34,4 @@ RUN echo 'server { \
 
 # Exponer el puerto y arrancar Nginx junto con PHP
 EXPOSE 80
-CMD php-fpm -D && nginx -g "daemon off;"
+CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
