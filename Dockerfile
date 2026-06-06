@@ -15,13 +15,21 @@ RUN composer install --no-dev --optimize-autoloader
 # Configurar permisos para Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configurar Nginx para apuntar a la carpeta /public de Laravel
+# Configurar Nginx corregido con soporte de rutas para Laravel
 RUN echo 'server { \
     listen 80; \
     root /var/www/html/public; \
     index index.php index.html; \
-    location / { try_files $uri $uri/ /index.php?$query_string; } \
-    location ~ \.php$ { include fastcgi_params; fastcgi_pass 127.0.0.1:9000; fastcgi_index index.php; fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; } \
+    location / { \
+        try_files $uri $uri/ /index.php?$query_string; \
+    } \
+    location ~ \.php$ { \
+        try_files $uri =404; \
+        include fastcgi_params; \
+        fastcgi_pass 127.0.0.1:9000; \
+        fastcgi_index index.php; \
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
+    } \
 }' > /etc/nginx/http.d/default.conf
 
 # Exponer el puerto y arrancar Nginx junto con PHP
