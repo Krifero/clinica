@@ -1,39 +1,22 @@
-# --- ETAPA 1: INSTALAR COMPOSER Y CONSTRUIR DEPENDENCIAS ---
-FROM composer:2.7 AS vendor
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --ignore-platform-reqs --no-scripts --no-autoloader
+FROM shivammathur/node-php:8.2
 
-# --- ETAPA 2: CONFIGURACIÓN FINAL DEL SERVIDOR DEBIAN ---
-FROM php:8.2-fpm
+# Instalar Nginx de forma directa
+RUN apt-get update && apt-get install -y nginx && apt-get clean
 
-# Instalar dependencias del sistema indispensables
-RUN apt-get update && apt-get install -y \
-    nginx \
-    bash \
-    nodejs \
-    npm \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql pdo_mysql
-
-# Directorio de trabajo
+# Configurar directorio de trabajo
 WORKDIR /var/www/html
 COPY . .
 
-# Copiar las dependencias de Composer desde la Etapa 1
-COPY --from=vendor /app/vendor/ /var/www/html/vendor/
+# Instalar dependencias de PHP usando el Composer que ya viene instalado
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# Generar el autoloader optimizado de Laravel
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && composer dump-autoload --optimize --no-dev
-
-# Compilar Frontend (Vite / Mix)
+# Compilar el Frontend (Vite / Mix) con el Node/NPM que ya viene instalado
 RUN if [ -f package.json ]; then npm install && npm run build; fi
 
-# Configurar permisos para Laravel
+# Configurar permisos requeridos por Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configurar Nginx para Laravel
+# Configurar Nginx para redireccionar correctamente a Laravel
 RUN echo 'server { \
     listen 80; \
     root /var/www/html/public; \
@@ -50,6 +33,8 @@ RUN echo 'server { \
 }' > /etc/nginx/sites-available/default \
 && ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-# Exponer puerto y arrancar servicios con migraciones automáticas
+# Exponer puerto web estándar
 EXPOSE 80
+
+# Iniciar migraciones, PHP-FPM y Nginx
 CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
