@@ -1,20 +1,28 @@
 FROM php:8.2-fpm
 
-# Instalar Nginx y extensiones necesarias para PostgreSQL y MySQL de forma nativa
+# Instalar dependencias del sistema esenciales y Nginx
 RUN apt-get update && apt-get install -y \
     nginx \
     bash \
+    git \
+    unzip \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_mysql pdo_pgsql \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Descargar la herramienta oficial e infalible para instalar extensiones de PHP
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+# Instalar TODAS las extensiones nativas que Laravel exige para funcionar de forma estable
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions pdo pdo_mysql pdo_pgsql bcmath ctype fileinfo json mbstring openssl xml zip tokenizer
 
 # Configurar directorio de trabajo
 WORKDIR /var/www/html
 COPY . .
 
-# Instalar dependencias de PHP con Composer
+# Instalar Composer de forma limpia y ejecutar instalación optimizada sin caché
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-cache
 
 # Configurar permisos requeridos por Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
@@ -39,5 +47,5 @@ RUN echo 'server { \
 # Exponer puerto web estándar
 EXPOSE 80
 
-# Arrancar el contenedor: ejecuta migraciones en la BD de Render y enciende servidores
+# Arrancar el contenedor: ejecuta migraciones y enciende servidores
 CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
