@@ -1,7 +1,13 @@
-FROM php:8.2-fpm-alpine
+FROM php:8.2-fpm
 
-# Instalar herramientas de compilación esenciales y dependencias de PostgreSQL y Frontend
-RUN apk add --no-cache nginx wget bash nodejs npm postgresql-dev build-base \
+# Instalar Nginx, Node.js, NPM y las librerías oficiales de PostgreSQL
+RUN apt-get update && apt-get install -y \
+    nginx \
+    wget \
+    bash \
+    nodejs \
+    npm \
+    libpq-dev \
     && docker-php-ext-install pdo pdo_mysql pdo_pgsql
 
 # Configurar directorio de trabajo
@@ -18,7 +24,7 @@ RUN if [ -f package.json ]; then npm install && npm run build; fi
 # Configurar permisos para Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configurar Nginx compatible con Alpine para Laravel
+# Configurar Nginx para Laravel
 RUN echo 'server { \
     listen 80; \
     root /var/www/html/public; \
@@ -32,7 +38,8 @@ RUN echo 'server { \
         fastcgi_index index.php; \
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
     } \
-}' > /etc/nginx/http.d/default.conf
+}' > /etc/nginx/sites-available/default \
+&& ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 # Exponer el puerto y arrancar Nginx junto con PHP ejecutando las migraciones automáticas
 EXPOSE 80
