@@ -1,7 +1,7 @@
 FROM php:8.2-fpm-alpine
 
-# Instalar extensiones de PHP necesarias para Laravel (MySQL y PostgreSQL) y herramientas de Frontend
-RUN apk add --no-cache nginx wget bash nodejs npm postgresql-dev \
+# Instalar dependencias del sistema necesarias para compilar extensiones (incluyendo librerías de Postgres)
+RUN apk add --no-cache nginx wget bash nodejs npm postgresql-client libpq-dev \
     && docker-php-ext-install pdo pdo_mysql pdo_pgsql
 
 # Configurar directorio de trabajo
