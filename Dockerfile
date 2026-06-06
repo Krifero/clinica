@@ -1,6 +1,6 @@
 FROM php:8.2-fpm-alpine
 
-# Instalar extensiones de PHP necesarias para Laravel y herramientas (incluyendo Node y NPM)
+# Instalar extensiones de PHP necesarias para Laravel y herramientas
 RUN apk add --no-cache nginx wget bash nodejs npm \
     && docker-php-ext-install pdo pdo_mysql
 
@@ -18,13 +18,13 @@ RUN if [ -f package.json ]; then npm install && npm run build; fi
 # Configurar permisos para Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configurar Nginx reescribiendo de forma estricta para Laravel
+# Configurar Nginx compatible con Alpine para Laravel
 RUN echo 'server { \
     listen 80; \
     root /var/www/html/public; \
     index index.php index.html; \
     location / { \
-        try_files $uri $uri/ /index.php?$args; \
+        try_files $uri $uri/ /index.php?$query_string; \
     } \
     location ~ \.php$ { \
         include fastcgi_params; \
