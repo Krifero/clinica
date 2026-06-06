@@ -1,6 +1,6 @@
 FROM php:8.2-fpm-alpine
 
-# Instalar extensiones de PHP necesarias para Laravel y herramientas
+# Instalar extensiones de PHP necesarias para Laravel y herramientas (incluyendo Node y NPM)
 RUN apk add --no-cache nginx wget bash nodejs npm \
     && docker-php-ext-install pdo pdo_mysql
 
@@ -8,9 +8,13 @@ RUN apk add --no-cache nginx wget bash nodejs npm \
 WORKDIR /var/www/html
 COPY . .
 
-# Instalar Composer
+# Instalar dependencias de PHP con Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
+
+# --- COMPILAR FRONTEND (Vite / Mix) ---
+# Si existe el archivo package.json, instala las herramientas de diseño y compila los estilos
+RUN if [ -f package.json ]; then npm install && npm run build; fi
 
 # Configurar permisos para Laravel
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
@@ -32,6 +36,6 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/http.d/default.conf
 
-# Exponer el puerto y arrancar Nginx junto con PHP
+# Exponer el puerto y arrancar Nginx junto con PHP ejecutando las migraciones automáticas
 EXPOSE 80
 CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
